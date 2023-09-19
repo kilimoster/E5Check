@@ -1,0 +1,183 @@
+// 导入System命名空间
+using System;
+// 导入System.Drawing命名空间
+using System.Drawing;
+// 导入System.Windows.Forms命名空间
+using System.Windows.Forms;
+// 导入System.Collections.Generic命名空间
+using System.Collections.Generic;
+
+// 定义一个继承自Form的贪吃蛇窗口类
+public class SnakeForm : Form {
+    // 定义颜色常量
+    public static readonly Color BLACK = Color.Black;
+    public static readonly Color WHITE = Color.White;
+    public static readonly Color RED = Color.Red;
+    public static readonly Color GREEN = Color.Green;
+    public static readonly Color BLUE = Color.Blue;
+
+    // 定义蛇的初始位置和方向
+    private int snakeX = 400;
+    private int snakeY = 300;
+    private string snakeDir = "right";
+    // 定义蛇的身体列表
+    private List<int> snakeBodyX = new List<int>();
+    private List<int> snakeBodyY = new List<int>();
+    // 定义蛇的长度
+    private int snakeLength = 1;
+    // 定义蛇的速度
+    private int snakeSpeed = 10;
+
+    // 定义食物的初始位置
+    private int foodX;
+    private int foodY;
+
+    // 定义随机数对象
+    private Random random = new Random();
+
+    // 定义计时器对象
+    private Timer timer;
+
+    // 定义游戏是否结束的标志
+    private bool gameOver = false;
+
+    // 贪吃蛇窗口类的构造方法
+    public SnakeForm() {
+        // 设置窗口标题
+        this.Text = "贪吃蛇";
+        // 设置窗口大小
+        this.ClientSize = new Size(800, 600);
+        // 设置窗口居中显示
+        this.StartPosition = FormStartPosition.CenterScreen;
+        // 设置窗口关闭时退出程序
+        this.FormClosing += (sender, e) => Application.Exit();
+        // 设置窗口不可调整大小
+        this.FormBorderStyle = FormBorderStyle.FixedSingle;
+        // 设置窗口背景色
+        this.BackColor = BLACK;
+        // 设置窗口可获取焦点
+        this.Focus();
+        // 添加键盘按下事件处理方法，改变蛇的方向
+        this.KeyDown += (sender, e) => {
+            switch (e.KeyCode) {
+                case Keys.Up:
+                    if (snakeDir != "down") {
+                        snakeDir = "up";
+                    }
+                    break;
+                case Keys.Down:
+                    if (snakeDir != "up") {
+                        snakeDir = "down";
+                    }
+                    break;
+                case Keys.Left:
+                    if (snakeDir != "right") {
+                        snakeDir = "left";
+                    }
+                    break;
+                case Keys.Right:
+                    if (snakeDir != "left") {
+                        snakeDir = "right";
+                    }
+                    break;
+            }
+        };
+        // 初始化食物位置
+        GenerateFood();
+        // 创建计时器对象，每30毫秒触发一次Tick事件
+        timer = new Timer();
+        timer.Interval = 30;
+        timer.Tick += Timer_Tick;
+        // 启动计时器
+        timer.Start();
+    }
+
+    // 重写绘制事件处理方法，画出蛇和食物
+    protected override void OnPaint(PaintEventArgs e) {
+        base.OnPaint(e);
+        // 获取绘图对象
+        Graphics g = e.Graphics;
+        // 设置画笔颜色为绿色，画出蛇的身体
+        g.FillRectangle(new SolidBrush(GREEN), snakeX, snakeY, 10, 10);
+        for (int i = 0; i < snakeLength; i++) {
+            g.FillRectangle(new SolidBrush(GREEN), snakeBodyX[i], snakeBodyY[i], 10, 10);
+        }
+        // 设置画笔颜色为红色，画出食物
+        g.FillRectangle(new SolidBrush(RED), foodX, foodY, 10, 10);
+    }
+
+    // 定义计时器Tick事件处理方法，更新蛇和食物的位置和状态
+    private void Timer_Tick(object sender, EventArgs e) {
+        // 根据蛇的方向移动蛇的位置
+        switch (snakeDir) {
+            case "up":
+                snakeY -= snakeSpeed;
+                break;
+            case "down":
+                snakeY += snakeSpeed;
+                break;
+            case "left":
+                snakeX -= snakeSpeed;
+                break;
+            case "right":
+                snakeX += snakeSpeed;
+                break;
+        }
+        // 判断蛇是否撞到了边界或自己，如果是，游戏结束
+        if (snakeX < 0 || snakeX > 790 || snakeY < 0 || snakeY > 590 || IsHitSelf()) {
+            gameOver = true;
+            timer.Stop();
+            MessageBox.Show("游戏结束！");
+            Application.Exit();
+        }
+        // 将蛇的新位置添加到身体列表中
+        snakeBodyX.Add(snakeX);
+        snakeBodyY.Add(snakeY);
+        // 如果身体列表的长度大于蛇的长度，删除最旧的位置
+        if (snakeBodyX.Count > snakeLength) {
+            snakeBodyX.RemoveAt(0);
+            snakeBodyY.RemoveAt(0);
+        }
+        // 判断蛇是否吃到了食物，如果是，增加蛇的长度和速度，并重新生成食物的位置
+        if (snakeX == foodX && snakeY == foodY) {
+            snakeLength++;
+            snakeSpeed++;
+            GenerateFood();
+        }
+        // 重新绘制窗口
+        this.Invalidate();
+    }
+
+    // 定义一个生成食物位置的方法，保证食物不会出现在蛇身上
+    public void GenerateFood() {
+        do {
+            foodX = random.Next(80) * 10;
+            foodY = random.Next(60) * 10;
+        } while (IsOnSnake(foodX, foodY));
+    }
+
+    // 定义一个判断坐标是否在蛇身上的方法，返回布尔值
+    public bool IsOnSnake(int x, int y) {
+        for (int i = 0; i < snakeLength; i++) {
+            if (x == snakeBodyX[i] && y == snakeBodyY[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 定义一个判断蛇是否撞到自己的方法，返回布尔值
+    public bool IsHitSelf() {
+        for (int i = 0; i < snakeLength - 1; i++) {
+            if (snakeX == snakeBodyX[i] && snakeY == snakeBodyY[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 主方法，创建贪吃蛇窗口对象并运行程序
+    public static void Main() {
+        Application.Run(new SnakeForm());
+    }
+}
